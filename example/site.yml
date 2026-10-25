@@ -1,0 +1,42 @@
+# Example content dir for posterpage. Build with:
+#   posterpage build -c example -o /tmp/example-out
+#
+# Note: the `fonts:` key generates the Google Fonts stylesheet tags itself, so
+# head.links must NOT contain a fonts.googleapis.com stylesheet (duplicate rule).
+
+site:
+  title: Parth Deshmukh
+  description: Systems engineer
+  bio: |
+    Systems engineer. I build things — mostly Go, occasionally web,
+    and a fair amount of tooling for both.
+  picture: me.jpg
+  favicon: favicon.png
+
+head: # all optional; validated against allowlists
+  meta: # extra <meta> tags
+    - name: author
+      content: Parth Deshmukh
+  links: # extra <link> tags (preconnects, non-font stylesheets, …)
+    - rel: preconnect
+      href: https://fonts.gstatic.com
+  scripts: # <script src=…> tags — analytics use case; no inline bodies
+    - src: https://plausible.io/js/script.js
+      defer: true
+      data-domain: parthdeshmukh.com
+
+fonts: # Google Fonts shortcut; generates preconnect + stylesheet tags
+  display: swap # optional font-display; default swap
+  families: # rendered in the order listed
+    - family: Inter
+      weights: [400, 600] # optional; omit for the family's default/variable range
+    - family: JetBrains Mono
+
+links: # the link list, rendered in order (required)
+  - text: GitHub
+    href: https://github.com/parthdeshmukh
+  - text: Blog
+    href: /blog
+    subtitle: Occasional writing
+  - text: Email me
+    href: mailto:hi@parthdeshmukh.com

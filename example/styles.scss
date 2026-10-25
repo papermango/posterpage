@@ -1,0 +1,18 @@
+// example/styles.scss — controls shipped size; importing Bootstrap partials
+// is the tree-shake. Compiled (milestone 3) via:
+//
+//	sass --style=compressed --no-source-map \
+//	  --load-path=<repo>/assets/bootstrap styles.scss public/styles.css
+
+@import "functions";
+@import "variables";
+@import "maps";
+@import "mixins";
+@import "root";
+@import "reboot";
+@import "buttons";
+@import "containers";
+@import "utilities/api";
+
+// + user overrides below
+:root { --bs-border-radius: 12px; }
