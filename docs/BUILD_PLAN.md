@@ -18,6 +18,7 @@ source code.
 | Runtime JS framework | None (no React/Angular/Vue/jQuery) | Site is fully static; we ship no Bootstrap JS at all. |
 | Config files | **One file**: `site.yml` | `head.yml` merged in as a `head:` section. One loader, one validation pass. |
 | Config format | **YAML first-class**; `.json` accepted transparently | Both decode into the identical Go struct; no cross-compilation concept needed. |
+| Google Fonts | **First-class `fonts:` key** → generates preconnect + stylesheet tags | Most common `head` use case; avoids hand-writing three tags and the `css2?` URL format by hand. Generics in `head.links` remain for everything else. |
 | Styles pipeline | **Shell out to `sass` binary** (`dart-sass`) | No viable pure-Go Sass. `styles.css` passes through untouched, so Sass stays optional. |
 | Template engine | Go `html/template` (stdlib) | Auto-escaping, zero deps. |
 | Go dependencies | `go.yaml.in/yaml/v3` (only external import) | Original `gopkg.in/yaml.v3` is archived (Mar 2025); this is the community-maintained fork. All else stdlib. |
@@ -74,6 +75,13 @@ head:                              # all optional; validated against allowlists
       defer: true
       data-domain: parthdeshmukh.com
 
+fonts:                             # Google Fonts shortcut (optional); generates the tags for you
+  display: swap                    # optional font-display; default swap
+  families:                        # rendered in the order listed
+    - family: Inter
+      weights: [400, 600]          # optional; omit for the family's default/variable range
+    - family: JetBrains Mono
+
 links:                             # the link list, rendered in order (required)
   - text: GitHub
     href: https://github.com/pdeshmukh
@@ -84,11 +92,26 @@ links:                             # the link list, rendered in order (required)
 
 `site.json` uses the exact same structure; loader picks decoder by extension. `.yml`/`.yaml`/`.json` all load; exactly one config file may exist per directory.
 
+### Google Fonts
+
+Given `fonts` in the config, Posterpage emits exactly these tags (before any `head` entries):
+
+```html
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono&display=swap">
+```
+
+- Families are joined alphabetically stable in listed order as `family=F&family=G`; weights become `:wght@400;600`.
+- No network request at build time — tags are linked, not fetched (keeps the build offline and hermetic). Self-hosting fonts locally is a future feature.
+- If `fonts` is set *and* `head.links` contains a `fonts.googleapis.com` stylesheet, that's a duplicate → build error with a message pointing at whichever key to remove.
+
 ### Validation rules (head allowlist)
 
 - `head.scripts[]` must have `src`; **inline script bodies are not allowed** (security + schema simplicity). Allowed attrs: `src, type, defer, async, integrity, crossorigin, referrerpolicy` plus `data-*` (regex `^data-[a-z0-9_-]+$`, string values).
 - `head.links[]` `rel` must be one of: `stylesheet, preconnect, dns-prefetch, preload, icon, alternate`.
 - `head.meta[]`: keys limited to `name | property | http-equiv | content | charset` (content required unless charset).
+- `fonts.families[].family` must match `^[A-Za-z0-9 ]+$` (spaces URL-encoded as `+`); `weights[]` must be integers 100–900 in steps of 100 (variable ranges `100..1000` and `ital`/axes come later); `fonts.display` ∈ `auto | block | swap | fallback | optional` (default `swap`).
 - `href`s must parse as absolute https URLs or root-relative paths (`/…`); `http://` rejected with a warning.
 - Referenced files (`picture`, `favicon`, styles) must exist in the config dir — validated before build.
 - Errors report file + YAML line numbers.
@@ -105,7 +128,10 @@ posterpage serve [-o <out-dir>] [-addr :8080]        # serves out-dir; --watch t
 ## HTML template (`templates/index.gohtml`)
 
 Single page. Posterpage always emits: doctype, charset, viewport, title, description, favicon link,
-stylesheet link, og/twitter basics derived from `site:`. Order: emitted basics → config `head` entries.
+stylesheet link, og/twitter basics derived from `site:`. Order: emitted basics → Google Fonts tags
+(if `fonts` is configured) → config `head` entries.
+
+`<meta name="viewport" content="width=device-width, initial-scale=1.0">` should always be included in `head`.
 
 Body skeleton (Bootstrap classes only, no custom layout CSS):
 
@@ -173,7 +199,7 @@ Size budget: HTML ≤ 3 KB; CSS ≤ ~30 KB uncompressed / ~6 KB gzip (partial-im
 1. **Skeleton**: `go.mod`, `posterpage build` CLI shell, config load/decode (yaml+json), validation. Deliverable: `posterpage build` parses `example/site.yml`, prints resolved config or a clean validation error.
 2. **Page render without styles**: template, asset copy, manifest printing. Deliverable: unstyled but correct HTML.
 3. **Styles pipeline**: vendored Bootstrap scss + sass exec + css passthrough. Deliverable: styled page in browser.
-4. **Head injection**: meta/link/script emission with full allowlist validation. Deliverable: analytics script + Google Fonts verified in output.
+4. **Head injection**: meta/link/script emission with full allowlist validation, plus Google Fonts tag generation from `fonts:`. Deliverable: analytics script + Google Fonts verified in output.
 5. **Polish**: favicon, og tags, dark mode (5.3 color modes + `prefers-color-scheme`), README (usage, schema doc, size report).
 6. **Optional**: `posterpage serve --watch`; later: Bootstrap 6 migration checklist once v6 is stable.
 
@@ -186,4 +212,4 @@ Size budget: HTML ≤ 3 KB; CSS ≤ ~30 KB uncompressed / ~6 KB gzip (partial-im
 
 ## Explicitly out of scope (v3)
 
-MD/HTML content pages and blog rendering, Go template → CSS processing, image resizing/webp (revisit later), RSS.
+MD/HTML content pages and blog rendering, Go template → CSS processing, image resizing/webp (revisit later), RSS, Google Fonts `ital`/variable-axes parameters and self-hosted fonts.
