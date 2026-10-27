@@ -143,8 +143,9 @@ The og/twitter basics sit first among the injected tags, via the built-in head-t
 doesn't apply): `og:title` (site.title), `og:type` = "website", `og:description` (site.description,
 only when set), `og:url` (only when `site.url` is set), `og:image` (`site.picture` — relative when
 `site.url` is unset, absolute, joined onto `site.url`, when set), then `twitter:card` =
-`summary_large_image` when a picture exists, else `summary`. All render as
-`<meta property="…" content="…">`, config `head.meta` entries follow.
+`summary_large_image` when a picture exists, else `summary`. og:* renders as
+`<meta property="…" content="…">`; `twitter:card` renders as
+`<meta name="twitter:card" content="…">` (Twitter/X consumes twitter:* via `name=`), config `head.meta` entries follow.
 
 Color modes (`site.color_mode`): `light` (default) emits nothing extra (Bootstrap default);
 `dark` emits `<html lang="en" data-bs-theme="dark">`; `auto` emits

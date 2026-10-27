@@ -114,7 +114,13 @@ func ogTags(cfg *config.Config) []headTag {
 	if site.Picture != "" {
 		card = "summary_large_image"
 	}
-	og("twitter:card", card)
+	// Twitter/X consumes twitter:* via the name attribute (unlike og:*,
+	// which is property=), so twitter:card emits name= per the documented
+	// format.
+	tags = append(tags, headTag{Name: "meta", Attr: []headAttr{
+		attr("name", "twitter:card"),
+		attr("content", card),
+	}})
 	return tags
 }
 

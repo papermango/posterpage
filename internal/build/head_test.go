@@ -78,7 +78,7 @@ func renderHead(t *testing.T, tags []headTag) string {
 // the summary card (og:title/og:description/og:url/og:image are conditional
 // on their source being set).
 const emptySiteOG = `<meta property="og:type" content="website">` + "\n" +
-	`<meta property="twitter:card" content="summary">` + "\n"
+	`<meta name="twitter:card" content="summary">` + "\n"
 
 func TestHeadTags(t *testing.T) {
 	t.Run("fonts block only: two preconnects, then stylesheet", func(t *testing.T) {
@@ -247,7 +247,7 @@ func TestOGTags(t *testing.T) {
 			"\n" +
 			`<meta property="og:image" content="https://parthdeshmukh.com/me.jpg">` +
 			"\n" +
-			`<meta property="twitter:card" content="summary_large_image">`
+			`<meta name="twitter:card" content="summary_large_image">`
 		if got != want {
 			t.Errorf("og head =\n%s\nwant\n%s", got, want)
 		}
@@ -270,7 +270,7 @@ func TestOGTags(t *testing.T) {
 			"\n" +
 			`<meta property="og:type" content="website">` +
 			"\n" +
-			`<meta property="twitter:card" content="summary">`
+			`<meta name="twitter:card" content="summary">`
 		if got != want {
 			t.Errorf("og head =\n%s\nwant\n%s", got, want)
 		}

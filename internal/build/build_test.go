@@ -82,7 +82,7 @@ func TestRenderIndexGolden(t *testing.T) {
 		"<meta property=\"og:type\" content=\"website\">\n" +
 		"<meta property=\"og:description\" content=\"Systems engineer\">\n" +
 		"<meta property=\"og:image\" content=\"me.jpg\">\n" +
-		"<meta property=\"twitter:card\" content=\"summary_large_image\">\n" +
+		"<meta name=\"twitter:card\" content=\"summary_large_image\">\n" +
 		// fonts block, in plan order
 		"<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n" +
 		"<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n" +
