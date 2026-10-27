@@ -60,6 +60,7 @@ site:
     Systems engineer. I build things.
   picture: me.jpg                  # filename in the config dir (required)
   favicon: favicon.png             # optional; emitted as <link rel="icon">
+  link_style: button               # optional; button | link; default button (see links:)
 
 head:                              # all optional; validated against allowlists
   meta:                            # extra <meta> tags
@@ -88,6 +89,7 @@ links:                             # the link list, rendered in order (required)
   - text: Blog
     href: https://parthdeshmukh.com/blog
     subtitle: Occasional writing    # optional second line under link text
+    style: link                     # optional per-link override of site.link_style
 ```
 
 `site.json` uses the exact same structure; loader picks decoder by extension. `.yml`/`.yaml`/`.json` all load; exactly one config file may exist per directory.
@@ -112,6 +114,7 @@ Given `fonts` in the config, Posterpage emits exactly these tags (before any `he
 - `head.links[]` `rel` must be one of: `stylesheet, preconnect, dns-prefetch, preload, icon, alternate`.
 - `head.meta[]`: keys limited to `name | property | http-equiv | content | charset` (content required unless charset).
 - `fonts.families[].family` must match `^[A-Za-z0-9 ]+$` (spaces URL-encoded as `+`); `weights[]` must be integers 100–900 in steps of 100 (variable ranges `100..1000` and `ital`/axes come later); `fonts.display` ∈ `auto | block | swap | fallback | optional` (default `swap`).
+- Link render style: `site.link_style` and per-entry `links[].style` ∈ `button | link` (default `button`; a per-entry `style` overrides the global for that link). `button` renders the current Bootstrap outline button; `link` renders a plain, format-friendly `<a>` (styled entirely from `styles.scss` — that's the point of the mode).
 - `href`s must parse as absolute https URLs or root-relative paths (`/…`); `http://` rejected with a warning.
 - Referenced files (`picture`, `favicon`, styles) must exist in the config dir — validated before build.
 - Errors report file + YAML line numbers.
@@ -120,7 +123,7 @@ Given `fonts` in the config, Posterpage emits exactly these tags (before any `he
 
 ```
 posterpage build [-c <config-dir>] [-o <out-dir>]    # defaults: ./site → ./public
-posterpage serve [-o <out-dir>] [-addr :8080]        # serves out-dir; --watch triggers rebuild (milestone 6)
+posterpage serve [-o <out-dir>] [-addr :8080]        # serves out-dir; --watch triggers rebuild (milestone 7)
 ```
 
 `build` prints each emitted file with its size and the total; writes nothing outside `-o`.
@@ -142,7 +145,7 @@ Body skeleton (Bootstrap classes only, no custom layout CSS):
     <h1 class="h3 mt-3">…</h1>
     <p class="text-body-secondary">…bio…</p>
     <nav class="d-grid gap-2 my-4">
-      <a class="btn btn-outline-secondary" href="…">GitHub</a>  <!-- subtitle → <small> inside btn -->
+      <a class="btn btn-outline-secondary" href="…">GitHub</a>  <!-- per style: button mode, or a plain <a> for link mode; subtitle → <small> -->
     </nav>
   </main>
 </body>
@@ -222,7 +225,8 @@ Size budget: HTML ≤ 3 KB; CSS ≤ ~30 KB uncompressed / ~6 KB gzip (partial-im
 3. **Styles pipeline**: vendored Bootstrap scss + sass exec + css passthrough. Deliverable: styled page in browser.
 4. **Head injection**: meta/link/script emission with full allowlist validation, plus Google Fonts tag generation from `fonts:`. Deliverable: analytics script + Google Fonts verified in output.
 5. **Polish**: favicon, og tags, dark mode (5.3 color modes + `prefers-color-scheme`), README (usage, schema doc, size report).
-6. **Optional**: `posterpage serve --watch`; later: Bootstrap 6 migration checklist once v6 is stable.
+6. **Link render styles**: `site.link_style` global default + per-link `style:` override — nav links render either as today's Bootstrap buttons (`button`) or as plain, fully formattable `<a>` anchors (`link`, styled entirely by the user's `styles.scss`, exact classes chosen at implementation and verified in-browser). Extends types/template/validation already shipping; note in the milestone that extending markup = extending `example/styles.scss` (likely more utilities/partials). Deliverable: a `link`-styled entry renders correctly next to button entries.
+7. **Optional**: `posterpage serve --watch`; later: Bootstrap 6 migration checklist once v6 is stable.
 
 ## Resolved former TBDs
 
