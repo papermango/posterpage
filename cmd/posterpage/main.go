@@ -1,5 +1,6 @@
-// Command posterpage builds and (eventually) serves a single-page
-// link-in-bio site. See docs/BUILD_PLAN.md.
+// Command posterpage builds a single-page link-in-bio site. See
+// docs/BUILD_PLAN.md for the spec and docs/ARCHITECTURE.md for how the code
+// is organized.
 package main
 
 import (
@@ -14,11 +15,9 @@ import (
 
 const usage = `usage:
   posterpage build [-c <config-dir>] [-o <out-dir>]    build the site; defaults: ./site → ./public
-  posterpage serve [-o <out-dir>] [-addr <addr>]       serve the built site (not implemented yet)
 
-build loads and validates the config, renders the page and copies its assets
-into the out dir, and prints a manifest of the emitted files (styles are not
-processed yet — milestone 3).`
+build loads and validates config, renders the page, compiles styles, copies
+assets into the out dir, and prints a manifest of the emitted files.`
 
 func main() {
 	os.Exit(run(os.Args[1:]))
@@ -33,9 +32,6 @@ func run(args []string) int {
 	switch cmd, rest := args[0], args[1:]; cmd {
 	case "build":
 		return cmdBuild(rest)
-	case "serve":
-		fmt.Fprintln(os.Stderr, "posterpage: serve is not implemented yet (planned for a later milestone)")
-		return 1
 	case "help", "-h", "--help":
 		fmt.Println(usage)
 		return 0
