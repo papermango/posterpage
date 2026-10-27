@@ -155,26 +155,47 @@ Zero JavaScript emitted (analytics excepted).
 
 - Config dir contains `styles.scss` or `styles.css` (not both; one is required).
 - `.css` → copy verbatim to `public/styles.css`.
-- `.scss` → run `sass --style=compressed --no-source-map --load-path=<repo>/assets/bootstrap styles.scss public/styles.css`.
+- `.scss` → run `sass --quiet --style=compressed --no-source-map --load-path=<vendored-scss-dir> styles.scss public/styles.css`; the load path is the vendored scss (checked in under `assets/bootstrap/`, embedded into the binary via `go:embed`) extracted to a fresh temp dir at build time, so an installed `posterpage` binary works without the source checkout nearby.
   - Missing `sass` binary → fail with a one-line install hint (`brew install sass/sass/sass`).
+  - `--quiet` (not surgical `--silence-deprecation` lists) because dart-sass 1.106 flags several deprecation families in Bootstrap 5.3.8's `@import`-era scss; a fixed list goes stale with every sass release. Warnings are suppressed; compile errors still surface via a nonzero exit with the stderr tail.
 - Posterpage never parses or alters stylesheet contents — "compiled and dropped in as-is" per original intent. Minification comes free from dart-sass.
 - Recommended `example/styles.scss` (controls shipped size — importing partials is the tree-shake):
 
 ```scss
+@use "sass:map";
+
 @import "functions";
 @import "variables";
 @import "maps";
 @import "mixins";
+
+// Trimmed after @import "maps" (which finalizes $theme-colors): keep only the
+// variant the links use (btn-outline-secondary).
+$theme-colors: ("secondary": map.get($theme-colors, "secondary"));
+
+// Before utilities/api generates CSS, keep only the utilities the markup uses.
+$keep: ("background-color", "display", "gap", "margin-y", "rounded", "text-color");
+@import "utilities";
+$kept: ();
+@each $u in $keep {
+  $kept: map.merge($kept, ($u: map.get($utilities, $u)));
+}
+$utilities: $kept;
+
 @import "root";
 @import "reboot";
+@import "type";      // .h1–.h6 heading classes (h3 in the page markup)
 @import "buttons";
 @import "containers";
 @import "utilities/api";
+
 // + user overrides below
 :root { --bs-border-radius: 12px; }
 ```
 
-Bootstrap 5.3 scss is vendored into `assets/bootstrap/` (checked in, version documented in `assets/bootstrap/VERSION`) so no package manager is required; a `--load-path` override can support an npm workflow later.
+This sample compiles to ~28 kB raw / ~5.7 kB gzipped — within the size budget. Extending the page markup means extending this file.
+
+Bootstrap 5.3.8 scss is vendored into `assets/bootstrap/` (checked in, version documented in `assets/bootstrap/VERSION`) so no package manager is required; a `--load-path` override can support an npm workflow later.
 
 ## Build pipeline (`posterpage build`)
 
