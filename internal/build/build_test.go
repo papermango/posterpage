@@ -11,9 +11,13 @@ import (
 	"posterpage/internal/config"
 )
 
-// Golden-file test: a fixed minimal config must render byte-identical HTML
-// (docs/BUILD_PLAN.md, internal/build testing). HasStyles is true, as Build
-// sets it after the styles step.
+// Golden-file test: a fixed config (incl. head entries + fonts) must render
+// byte-identical HTML (docs/BUILD_PLAN.md, internal/build testing). HasStyles
+// is true, as Build sets it after the styles step, and HeadTags is the
+// headTags(cfg) output, as writeIndex builds it. The golden asserts the full
+// emission order: basics → fonts (preconnects + css2 URL) → head entries.
+// URL/attribute escaping here is html/template's own (a plain string in a
+// quoted-attr-URL context): & → &amp;, + → &#43;, " → &#34;.
 func TestRenderIndexGolden(t *testing.T) {
 	cfg := &config.Config{
 		Site: config.Site{
@@ -23,6 +27,28 @@ func TestRenderIndexGolden(t *testing.T) {
 			Picture:     "me.jpg",
 			Favicon:     "favicon.png",
 		},
+		Head: config.Head{
+			Meta: []config.MetaTag{
+				{Name: "author", Content: "Parth Deshmukh"},
+			},
+			Links: []config.LinkTag{
+				{Rel: "alternate", Href: "/blog.xml"},
+			},
+			Scripts: []config.ScriptTag{
+				{
+					Src:   "https://plausible.io/js/script.js",
+					Defer: true,
+					Data:  map[string]string{"data-domain": "parthdeshmukh.com"},
+				},
+			},
+		},
+		Fonts: &config.Fonts{
+			Display: "swap",
+			Families: []config.FontFamily{
+				{Family: "Inter", Weights: []int{400, 600}},
+				{Family: "JetBrains Mono"},
+			},
+		},
 		Links: []config.Link{
 			{Text: "GitHub", Href: "https://github.com/pdeshmukh"},
 			{Text: "Blog", Href: "/blog", Subtitle: "Occasional writing"},
@@ -30,7 +56,7 @@ func TestRenderIndexGolden(t *testing.T) {
 	}
 
 	var got bytes.Buffer
-	if err := RenderIndex(&got, &Input{Config: cfg, HasStyles: true}); err != nil {
+	if err := RenderIndex(&got, &Input{Config: cfg, HasStyles: true, HeadTags: headTags(cfg)}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 
@@ -45,6 +71,14 @@ func TestRenderIndexGolden(t *testing.T) {
 		"<meta name=\"description\" content=\"Systems engineer\">\n" +
 		"<link rel=\"icon\" href=\"favicon.png\">\n" +
 		"<link rel=\"stylesheet\" href=\"styles.css\">\n" +
+		// fonts block first among the injected tags, in plan order
+		"<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n" +
+		"<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n" +
+		"<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=JetBrains&#43;Mono&amp;display=swap\">\n" +
+		// then head meta → links → scripts
+		"<meta name=\"author\" content=\"Parth Deshmukh\">\n" +
+		"<link rel=\"alternate\" href=\"/blog.xml\">\n" +
+		"<script src=\"https://plausible.io/js/script.js\" defer data-domain=\"parthdeshmukh.com\"></script>\n" +
 		"</head>\n" +
 		"<body class=\"bg-body\">\n" +
 		"<main class=\"container\" style=\"max-width: 40rem\">\n" +

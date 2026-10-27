@@ -1,4 +1,10 @@
-<!doctype html>
+{{/* htag renders one head tag from the Input.HeadTags list precomputed in
+internal/build/head.go. Tag names are a closed set (meta|link|script), so the
+literal tag text is selected by {{if}}; Attr is the emit-ordered attribute
+list: a pair with a non-empty Value renders ` key="value"`, an empty Value
+renders the bare attribute ` key` (defer / async / crossorigin). Values are
+escaped by html/template for their context; hattr is the shared attribute
+renderer. Defines sit on the doctype line so no stray whitespace is emitted. */}}{{define "htag"}}{{if eq .Name "meta"}}<meta{{template "hattr" .Attr}}>{{else}}{{if eq .Name "link"}}<link{{template "hattr" .Attr}}>{{else}}<script{{template "hattr" .Attr}}></script>{{end}}{{end}}{{end}}{{define "hattr"}}{{range .}}{{if .Value}} {{.Key}}="{{.Value}}"{{else}} {{.Key}}{{end}}{{end}}{{end}}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -10,6 +16,8 @@
 <link rel="icon" href="{{.Site.Favicon}}">{{end}}
 {{- if .HasStyles}}
 <link rel="stylesheet" href="styles.css">{{end}}
+{{- range .HeadTags}}
+{{template "htag" .}}{{end}}
 </head>
 <body class="bg-body">
 <main class="container" style="max-width: 40rem">

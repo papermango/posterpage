@@ -17,13 +17,13 @@ head: # all optional; validated against allowlists
   meta: # extra <meta> tags
     - name: author
       content: Parth Deshmukh
-  links: # extra <link> tags (preconnects, non-font stylesheets, …)
-    - rel: preconnect
-      href: https://fonts.gstatic.com
   scripts: # <script src=…> tags — analytics use case; no inline bodies
     - src: https://plausible.io/js/script.js
       defer: true
       data-domain: parthdeshmukh.com
+
+# NOTE: the fonts: block below generates both font preconnects and the css2
+# stylesheet link itself, so head.links must not repeat them (duplicate rule).
 
 fonts: # Google Fonts shortcut; generates preconnect + stylesheet tags
   display: swap # optional font-display; default swap
