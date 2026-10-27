@@ -127,7 +127,6 @@ Given `fonts` in the config, Posterpage emits exactly these tags (before any `he
 
 ```
 posterpage build [-c <config-dir>] [-o <out-dir>]    # defaults: ./site → ./public
-posterpage serve [-o <out-dir>] [-addr :8080]        # serves out-dir; --watch triggers rebuild (milestone 7)
 ```
 
 `build` prints each emitted file with its size and the total; writes nothing outside `-o`.
@@ -249,7 +248,7 @@ Size budget: HTML ≤ 3 KB; CSS ≤ ~30 KB uncompressed / ~6 KB gzip (partial-im
 4. **Head injection**: meta/link/script emission with full allowlist validation, plus Google Fonts tag generation from `fonts:`. Deliverable: analytics script + Google Fonts verified in output.
 5. **Polish**: favicon, og tags, dark mode (5.3 color modes + `prefers-color-scheme`), README (usage, schema doc, size report).
 6. **Link render styles**: `site.link_style` global default + per-link `style:` override — nav links render either as today's Bootstrap buttons (`button`) or as plain, fully formattable `<a>` anchors (`link`, styled entirely by the user's `styles.scss`, exact classes chosen at implementation and verified in-browser). Extends types/template/validation already shipping; note in the milestone that extending markup = extending `example/styles.scss` (likely more utilities/partials). Deliverable: a `link`-styled entry renders correctly next to button entries.
-7. **Optional**: `posterpage serve --watch`; later: Bootstrap 6 migration checklist once v6 is stable.
+7. **Dropped — unnecessary.** ~~`posterpage serve --watch`~~: output is plain static files; serve locally with any static fileserver or deploy `-o` output directly. (Remaining Google Fonts `ital`/axes and Bootstrap 6 migration also simply stay future work.)
 
 ## Resolved former TBDs
 
