@@ -5,7 +5,8 @@ list-of-links personal page (links, short bio, picture) — a single-page "poste
 Optimized for minimal dependencies, minimal shipped bytes, and minimal source code.
 
 This repo builds website v3; the full spec lives in [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md)
-(config schema, validation rules, HTML template, styles pipeline).
+(config schema, validation rules, HTML template, styles pipeline), and architecture /
+maintenance notes live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Usage
 
