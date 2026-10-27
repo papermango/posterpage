@@ -19,14 +19,18 @@ import (
 // has produced styles.css — always, in practice, since config validation
 // guarantees a styles source — which turns on the stylesheet link in <head>.
 // HeadTags is the emit-ready meta/link/script list flattened from the config
-// by headTags (fonts preconnects + stylesheet first, then head meta, links,
-// scripts); NavLinks is the nav entries with their render style resolved, so
-// the template never touches style inheritance or tag construction.
+// by headTags (og/twitter basics first, then fonts preconnects + stylesheet,
+// then head meta, links, scripts); NavLinks is the nav entries with their
+// render style resolved, so the template never touches style inheritance or
+// tag construction. ColorScript is non-nil only for site.color_mode: auto and
+// is emitted as the FIRST element in <head> (SSG-generated constant, never
+// user config).
 type Input struct {
 	*config.Config
-	HasStyles bool
-	HeadTags  []headTag
-	NavLinks  []NavLink
+	HasStyles   bool
+	HeadTags    []headTag
+	NavLinks    []NavLink
+	ColorScript *scriptEl
 }
 
 // NavLink is one nav entry resolved for rendering: the config link's text,
@@ -76,10 +80,20 @@ func RenderIndex(w io.Writer, in *Input) error {
 // writeIndex renders the page into <outDir>/index.html and returns its byte
 // size. HasStyles is always true here: the styles step has already run (and
 // produced <outDir>/styles.css) by the time render happens; the head tags and
-// nav links are flattened from the config right before rendering.
+// nav links are flattened from the config right before rendering, and the
+// color-mode script element is built for auto mode.
 func writeIndex(outDir string, cfg *config.Config) (int64, error) {
 	var buf bytes.Buffer
-	in := &Input{Config: cfg, HasStyles: true, HeadTags: headTags(cfg), NavLinks: navLinks(cfg)}
+	in := &Input{
+		Config:    cfg,
+		HasStyles: true,
+		HeadTags:  headTags(cfg),
+		NavLinks:  navLinks(cfg),
+	}
+	if cfg.Site.ColorMode == "auto" {
+		el := colorModeScriptEl()
+		in.ColorScript = &el
+	}
 	if err := RenderIndex(&buf, in); err != nil {
 		return 0, err
 	}

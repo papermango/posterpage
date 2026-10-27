@@ -405,6 +405,80 @@ links:
 			wantErr: `unknown field "footers"`,
 		},
 		{
+			name: "site.url accepted and color_mode defaulted",
+			files: base(map[string]string{"site.yml": `site:
+  title: T
+  picture: me.jpg
+  url: https://parthdeshmukh.com/
+  color_mode: dark
+links:
+  - text: GitHub
+    href: https://example.com/x
+`}),
+			check: func(t *testing.T, c *Config) {
+				if c.Site.Url != "https://parthdeshmukh.com/" {
+					t.Errorf("site.url = %q", c.Site.Url)
+				}
+				if c.Site.ColorMode != "dark" {
+					t.Errorf("color_mode = %q, want %q", c.Site.ColorMode, "dark")
+				}
+			},
+		},
+		{
+			name: "site.url and color_mode default to light/empty",
+			files: base(map[string]string{"site.yml": `site:
+  title: T
+  picture: me.jpg
+links:
+  - text: GitHub
+    href: https://example.com/x
+`}),
+			check: func(t *testing.T, c *Config) {
+				if c.Site.Url != "" {
+					t.Errorf("site.url = %q, want empty when unset", c.Site.Url)
+				}
+				if c.Site.ColorMode != "light" {
+					t.Errorf("color_mode = %q, want defaulted %q", c.Site.ColorMode, "light")
+				}
+			},
+		},
+		{
+			name: "site.url http rejected",
+			files: base(map[string]string{"site.yml": `site:
+  title: T
+  picture: me.jpg
+  url: http://parthdeshmukh.com
+links:
+  - text: GitHub
+    href: https://example.com/x
+`}),
+			wantErr: `site.url "http://parthdeshmukh.com" uses http://; use https:// instead`,
+		},
+		{
+			name: "site.url not absolute https",
+			files: base(map[string]string{"site.yml": `site:
+  title: T
+  picture: me.jpg
+  url: //parthdeshmukh.com
+links:
+  - text: GitHub
+    href: https://example.com/x
+`}),
+			wantErr: `site.url "//parthdeshmukh.com" must be an absolute https:// site URL`,
+		},
+		{
+			name: "invalid color_mode",
+			files: base(map[string]string{"site.yml": `site:
+  title: T
+  picture: me.jpg
+  color_mode: midnight
+links:
+  - text: GitHub
+    href: https://example.com/x
+`}),
+			wantErr: `site.color_mode: invalid color mode "midnight" (allowed: light, dark, auto)`,
+		},
+		{
 			name: "multiple problems in one error",
 			files: base(map[string]string{"site.yml": `site:
   bio: just a bio
@@ -447,31 +521,5 @@ func TestLoadErrorFormat(t *testing.T) {
 	}
 	if got := err.Error(); !strings.HasPrefix(got, "site.yml: line 1:") {
 		t.Errorf("error %q not prefixed with \"site.yml: line 1:\"", got)
-	}
-}
-
-// TestPrintJSONExcludesLines exercises the build command's config printout.
-func TestPrintJSONExcludesLines(t *testing.T) {
-	cfg, err := runCase(t, base(map[string]string{"site.yml": validYAML()}))
-	if err != nil {
-		t.Fatalf("fixture invalid: %v", err)
-	}
-	var b strings.Builder
-	if err := PrintJSON(&b, cfg); err != nil {
-		t.Fatalf("PrintJSON: %v", err)
-	}
-	out := b.String()
-	if strings.Contains(out, `"Line"`) {
-		t.Error("printout leaks line fields")
-	}
-	for _, want := range []string{
-		`"title": "Parth Deshmukh"`,
-		`"data-domain": "parthdeshmukh.com"`,
-		`"display": "swap"`,
-		`"family": "JetBrains Mono"`,
-	} {
-		if !strings.Contains(out, want) {
-			t.Errorf("printout missing %s:\n%s", want, out)
-		}
 	}
 }

@@ -61,6 +61,8 @@ site:
   picture: me.jpg                  # filename in the config dir (required)
   favicon: favicon.png             # optional; emitted as <link rel="icon">
   link_style: button               # optional; button | link; default button (see links:)
+  url: https://parthdeshmukh.com   # optional; absolute site URL → og:url + absolute og:image
+  color_mode: light                # optional; light | dark | auto; default light
 
 head:                              # all optional; validated against allowlists
   meta:                            # extra <meta> tags
@@ -115,6 +117,8 @@ Given `fonts` in the config, Posterpage emits exactly these tags (before any `he
 - `head.meta[]`: keys limited to `name | property | http-equiv | content | charset` (content required unless charset).
 - `fonts.families[].family` must match `^[A-Za-z0-9 ]+$` (spaces URL-encoded as `+`); `weights[]` must be integers 100–900 in steps of 100 (variable ranges `100..1000` and `ital`/axes come later); `fonts.display` ∈ `auto | block | swap | fallback | optional` (default `swap`).
 - Link render style: `site.link_style` and per-entry `links[].style` ∈ `button | link` (default `button`; a per-entry `style` overrides the global for that link). `button` renders the current Bootstrap outline button; `link` renders a plain, format-friendly `<a>` (styled entirely from `styles.scss` — that's the point of the mode).
+- `site.url`, when set, must be an absolute `https://` URL (`http://` rejected): it becomes `og:url` and the base of the absolute `og:image`. Unset keeps `og:image` relative to the page.
+- `site.color_mode` ∈ `light | dark | auto` (default `light`) — Bootstrap 5.3 color modes; see the color modes in the template section.
 - `href`s must parse as absolute https URLs or root-relative paths (`/…`); `http://` rejected with a warning.
 - Referenced files (`picture`, `favicon`, styles) must exist in the config dir — validated before build.
 - Errors report file + YAML line numbers.
@@ -133,6 +137,22 @@ posterpage serve [-o <out-dir>] [-addr :8080]        # serves out-dir; --watch t
 Single page. Posterpage always emits: doctype, charset, viewport, title, description, favicon link,
 stylesheet link, og/twitter basics derived from `site:`. Order: emitted basics → Google Fonts tags
 (if `fonts` is configured) → config `head` entries.
+
+The og/twitter basics sit first among the injected tags, via the built-in head-tag machinery
+(same shape as the fonts block; they are NOT user `head.meta` config, so the meta allowlist
+doesn't apply): `og:title` (site.title), `og:type` = "website", `og:description` (site.description,
+only when set), `og:url` (only when `site.url` is set), `og:image` (`site.picture` — relative when
+`site.url` is unset, absolute, joined onto `site.url`, when set), then `twitter:card` =
+`summary_large_image` when a picture exists, else `summary`. All render as
+`<meta property="…" content="…">`, config `head.meta` entries follow.
+
+Color modes (`site.color_mode`): `light` (default) emits nothing extra (Bootstrap default);
+`dark` emits `<html lang="en" data-bs-theme="dark">`; `auto` emits
+`<html lang="en" data-bs-theme="light">` plus one deterministic SSG-generated inline `<script>` as
+the FIRST element in `<head>` — ahead of the charset meta, to apply the visitor's
+`prefers-color-scheme` (`data-bs-theme = dark`/`light`) before first paint. That script is a
+build-time constant, not user config: `head.scripts` entries can never carry inline bodies
+(validation keeps them src-only).
 
 `<meta name="viewport" content="width=device-width, initial-scale=1.0">` should always be included in `head`.
 

@@ -73,14 +73,14 @@ func PrintManifest(w io.Writer, files []File) error {
 	return err
 }
 
-// humanSize renders a byte count as B / kB / MiB (KiB steps of 1024, per-unit
-// one decimal above 1000 B).
+// humanSize renders a byte count as B below 1000, then as KiB steps of
+// 1024 — labeled KiB/MiB/GiB (binary prefixes, one decimal above 1000 B).
 func humanSize(n int64) string {
 	switch {
 	case n < 1000:
 		return fmt.Sprintf("%d B", n)
 	}
-	units := []string{"kB", "MiB", "GiB"}
+	units := []string{"KiB", "MiB", "GiB"}
 	f := float64(n) / 1024
 	for _, u := range units {
 		if f < 1024 || u == "GiB" {

@@ -80,6 +80,24 @@ func validate(c *Config, dir string) []problem {
 	case !linkStyles[c.Site.LinkStyle]:
 		add(c.Site.Line, "site.link_style", `invalid link style %q (allowed: button, link)`, c.Site.LinkStyle)
 	}
+	// site.url, when set, must be an absolute https:// URL: it becomes
+	// og:url and the base for the absolute og:image.
+	if c.Site.Url != "" {
+		u, err := url.Parse(c.Site.Url)
+		if strings.HasPrefix(c.Site.Url, "http://") {
+			add(c.Site.Line, "site.url", "site.url %q uses http://; use https:// instead", c.Site.Url)
+		} else if err != nil || u.Scheme != "https" || u.Host == "" {
+			add(c.Site.Line, "site.url", "site.url %q must be an absolute https:// site URL (e.g. https://example.com)", c.Site.Url)
+		}
+	}
+	// site.color_mode. Load defaults color_mode to light, so the not-set
+	// case is unreachable via Load.
+	switch {
+	case c.Site.ColorMode == "":
+		add(c.Site.Line, "site.color_mode", "color_mode is not set (should default to light)") // unreachable via Load
+	case !colorModes[c.Site.ColorMode]:
+		add(c.Site.Line, "site.color_mode", `invalid color mode %q (allowed: light, dark, auto)`, c.Site.ColorMode)
+	}
 
 	// head.meta
 	for i := range c.Head.Meta {
@@ -207,6 +225,12 @@ var relAllowed = map[string]bool{
 // linkStyles is the value domain of site.link_style and links[].style.
 var linkStyles = map[string]bool{
 	"button": true, "link": true,
+}
+
+// colorModes is the value domain of site.color_mode (Bootstrap 5.3 color
+// modes; "auto" = script-driven prefers-color-scheme).
+var colorModes = map[string]bool{
+	"light": true, "dark": true, "auto": true,
 }
 
 // addHrefCheck validates one href/src reference: absolute https:// (also

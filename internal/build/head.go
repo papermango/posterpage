@@ -49,16 +49,110 @@ type headTag struct {
 	Attr []headAttr
 }
 
-// headTags flattens cfg into the ordered emit-ready head tags:
+// scriptEl is one emit-ready <script> with an inline body: the only
+// inline-script element posterpage emits, reserved for SSG-generated
+// constants. head.scripts config entries are src-only by validation and can
+// never produce one (nor should they — the inline prohibition covers them).
+// Body is typed template.JS because the template define that renders scriptEl
+// sits inside a script element context, where html/template would otherwise
+// JS-escape the body; the value comes verbatim from this package's constant,
+// so no escaping is wanted.
+type scriptEl struct {
+	Attr []headAttr
+	Body template.JS
+}
+
+// colorModeScriptBody is the hand-formatted, deterministic script emitted as
+// the FIRST element in <head> for site.color_mode: auto. It applies the
+// visitor's prefers-color-scheme to Bootstrap's data-bs-theme before first
+// paint, so an auto-mode page never flashes light first.
+const colorModeScriptBody = template.JS(`
+  const dark = window.matchMedia("(prefers-color-scheme: dark)");
+  document.documentElement.dataset.bsTheme = dark.matches ? "dark" : "light";
+`)
+
+// colorModeScriptEl builds the emit-ready color-mode script element.
+func colorModeScriptEl() scriptEl {
+	return scriptEl{Body: colorModeScriptBody}
+}
+
+// ogTags builds the og/twitter basics always emitted for the page (derived
+// from site:, never user head config). Each tag renders as
+// <meta property="…" content="…">. Order mirrors docs/BUILD_PLAN.md:
 //
-//  1. Google Fonts preconnects + stylesheet link, when cfg.Fonts is set,
-//  2. cfg.Head.Meta entries,
-//  3. cfg.Head.Links entries,
-//  4. cfg.Head.Scripts entries.
+//	og:title (site.title, when set) → og:type "website" →
+//	og:description (when set) → og:url (when site.url is set) →
+//	og:image (site.picture: relative when site.url is unset, absolute
+//	site-joined when set) → twitter:card (summary_large_image with a
+//	picture, else summary).
+//
+// These are built-in tags, not user config: the head.meta "at most one key"
+// validation restriction does not apply to them.
+func ogTags(cfg *config.Config) []headTag {
+	var tags []headTag
+	site := cfg.Site
+	og := func(property, content string) {
+		tags = append(tags, headTag{Name: "meta", Attr: []headAttr{
+			attr("property", property),
+			attr("content", content),
+		}})
+	}
+	if site.Title != "" {
+		og("og:title", site.Title)
+	}
+	og("og:type", "website")
+	if site.Description != "" {
+		og("og:description", site.Description)
+	}
+	if site.Url != "" {
+		og("og:url", site.Url)
+	}
+	if site.Picture != "" {
+		og("og:image", ogImageURL(site.Url, site.Picture))
+	}
+	card := "summary"
+	if site.Picture != "" {
+		card = "summary_large_image"
+	}
+	og("twitter:card", card)
+	return tags
+}
+
+// ogImageURL resolves the og:image URL: the picture as a relative URL when
+// site.url is unset, joined onto the site URL as an absolute URL when set.
+func ogImageURL(siteURL, picture string) string {
+	if siteURL == "" {
+		return picture
+	}
+	u, err := url.Parse(siteURL)
+	if err != nil {
+		return picture // shape-validated upstream; unreachable via Load
+	}
+	return u.JoinPath(picture).String()
+}
+
+// headTags flattens the built-in tags plus cfg into the ordered emit-ready
+// head tags:
+//
+//  1. og/twitter basics, always (ogTags),
+//  2. Google Fonts preconnects + stylesheet link, when cfg.Fonts is set,
+//  3. cfg.Head.Meta entries,
+//  4. cfg.Head.Links entries,
+//  5. cfg.Head.Scripts entries.
 //
 // Tags render as void elements (self-unclosed <meta>/<link>) except scripts,
 // which close with </script>.
 func headTags(cfg *config.Config) []headTag {
+	tags := ogTags(cfg)
+	tags = append(tags, builtInHeadTags(cfg)...)
+	return tags
+}
+
+// builtInHeadTags emits the "head-input" tags: the Google Fonts block (when
+// fonts is configured) followed by cfg.Head.Meta, cfg.Head.Links,
+// cfg.Head.Scripts — the tags whose shape comes from user config (validated
+// against the docs/BUILD_PLAN.md allowlists).
+func builtInHeadTags(cfg *config.Config) []headTag {
 	var tags []headTag
 	if cfg.Fonts != nil {
 		tags = append(tags,

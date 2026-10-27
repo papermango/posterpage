@@ -4,9 +4,7 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"reflect"
 	"regexp"
 	"strings"
@@ -35,6 +33,15 @@ type Site struct {
 	Picture     string `yaml:"picture" json:"picture"`
 	Favicon     string `yaml:"favicon,omitempty" json:"favicon,omitempty"`
 	LinkStyle   string `yaml:"link_style,omitempty" json:"link_style,omitempty"`
+	// Url is the absolute site URL: when set, og:url and a site-root-joined
+	// absolute og:image are emitted; when unset, og:image falls back to the
+	// picture as a relative URL. Empty means "not set" (no og:url emitted).
+	Url string `yaml:"url,omitempty" json:"url,omitempty"`
+	// ColorMode selects Bootstrap 5.3 color mode: light (default, nothing
+	// emitted), dark (data-bs-theme="dark" on <html>), or auto (light +
+	// a generated inline script that applies the user's prefers-color-scheme
+	// before first paint).
+	ColorMode string `yaml:"color_mode,omitempty" json:"color_mode,omitempty"`
 }
 
 type Head struct {
@@ -101,7 +108,7 @@ type Link struct {
 }
 
 var (
-	dataAttrRe  = regexp.MustCompile(`^data-[a-z0-9_-]+$`)
+	dataAttrRe   = regexp.MustCompile(`^data-[a-z0-9_-]+$`)
 	fontFamilyRe = regexp.MustCompile(`^[A-Za-z0-9 ]+$`)
 )
 
@@ -254,45 +261,4 @@ func (l *Link) UnmarshalYAML(n *yaml.Node) error {
 	}
 	l.Line = n.Line
 	return nil
-}
-
-// MarshalJSON folds the yaml-inline Data map back into the JSON object so the
-// config printout round-trips data-* attributes.
-func (s ScriptTag) MarshalJSON() ([]byte, error) {
-	m := make(map[string]any, len(s.Data)+7)
-	if s.Src != "" {
-		m["src"] = s.Src
-	}
-	if s.Type != "" {
-		m["type"] = s.Type
-	}
-	if s.Defer {
-		m["defer"] = true
-	}
-	if s.Async {
-		m["async"] = true
-	}
-	if s.Integrity != "" {
-		m["integrity"] = s.Integrity
-	}
-	if s.Crossorigin != "" {
-		m["crossorigin"] = s.Crossorigin
-	}
-	if s.Referrerpolicy != "" {
-		m["referrerpolicy"] = s.Referrerpolicy
-	}
-	for k, v := range s.Data {
-		m[k] = v
-	}
-	return json.Marshal(m)
-}
-
-// PrintJSON writes the resolved config as indented JSON to w (line-number
-// fields excluded). Milestone 1's build output; milestone 2 replaces it with
-// the real manifest print.
-func PrintJSON(w io.Writer, c *Config) error {
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	enc.SetIndent("", "  ")
-	return enc.Encode(c)
 }

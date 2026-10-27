@@ -4,13 +4,20 @@ literal tag text is selected by {{if}}; Attr is the emit-ordered attribute
 list: a pair with a non-empty Value renders ` key="value"`, an empty Value
 renders the bare attribute ` key` (defer / async / crossorigin). Values are
 escaped by html/template for their context; hattr is the shared attribute
-renderer. Nav entries come pre-resolved in Input.NavLinks (button vs the
-plain link-style anchor, per docs/BUILD_PLAN.md), so the nav range only
-branches on IsButton. Defines sit on the doctype line so no stray whitespace
-is emitted. */}}{{define "htag"}}{{if eq .Name "meta"}}<meta{{template "hattr" .Attr}}>{{else}}{{if eq .Name "link"}}<link{{template "hattr" .Attr}}>{{else}}<script{{template "hattr" .Attr}}></script>{{end}}{{end}}{{end}}{{define "hattr"}}{{range .}}{{if .Value}} {{.Key}}="{{.Value}}"{{else}} {{.Key}}{{end}}{{end}}{{end}}<!doctype html>
-<html lang="en">
+renderer. scriptel renders the one SSG-generated inline <script> (color mode
+in auto); its Body is template.JS built in Go, never user config. Nav entries
+come pre-resolved in Input.NavLinks (button vs the plain link-style anchor,
+per docs/BUILD_PLAN.md), so the nav range only branches on IsButton. Defines
+sit on the doctype line so no stray whitespace is emitted.
+*/}}{{define "htag"}}{{if eq .Name "meta"}}<meta{{template "hattr" .Attr}}>{{else}}{{if eq .Name "link"}}<link{{template "hattr" .Attr}}>{{else}}<script{{template "hattr" .Attr}}></script>{{end}}{{end}}{{end}}{{define "hattr"}}{{range .}}{{if .Value}} {{.Key}}="{{.Value}}"{{else}} {{.Key}}{{end}}{{end}}{{end}}{{define "scriptel"}}<script{{template "hattr" .Attr}}>{{.Body}}</script>{{end}}<!doctype html>
+{{/* color_mode: dark pins Bootstrap's dark theme vars on <html>; auto starts
+light, and the generated script — emitted first in <head>, below — flips to
+the visitor's prefers-color-scheme before first paint. That script is an
+SSG-generated build-time constant, NOT user config: head.scripts config
+entries can never carry inline bodies (validation). */}}<html lang="en"{{if eq .Site.ColorMode "dark"}} data-bs-theme="dark"{{end}}{{if eq .Site.ColorMode "auto"}} data-bs-theme="light"{{end}}>
 <head>
-<meta charset="utf-8">
+{{with .ColorScript}}<script{{template "hattr" .Attr}}>{{.Body}}</script>
+{{end}}<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{.Site.Title}}</title>
 {{- if .Site.Description}}

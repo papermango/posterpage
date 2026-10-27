@@ -70,13 +70,16 @@ func Load(dir string) (*Config, string, error) {
 }
 
 // applyDefaults resolves the documented defaults on the loaded config: the
-// font-display and the global link render style. Per-entry links[].style is
-// an override and stays empty when absent.
+// font-display, the global link render style, and the color mode. Per-entry
+// links[].style is an override and stays empty when absent.
 func applyDefaults(c *Config) {
 	if c.Fonts != nil && c.Fonts.Display == "" {
 		c.Fonts.Display = "swap"
 	}
 	if c.Site.LinkStyle == "" {
 		c.Site.LinkStyle = "button"
+	}
+	if c.Site.ColorMode == "" {
+		c.Site.ColorMode = "light"
 	}
 }

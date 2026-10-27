@@ -21,7 +21,7 @@ import (
 func TestRenderIndexGolden(t *testing.T) {
 	// Config shape = example/site.yml: link_style: button global default,
 	// a mixed nav (buttons plus one style: link entry, itself with a
-	// subtitle rendering as <small>).
+	// subtitle rendering as <small>). No site.url → og:image stays relative.
 	cfg := &config.Config{
 		Site: config.Site{
 			Title:       "Parth & Co",
@@ -76,7 +76,14 @@ func TestRenderIndexGolden(t *testing.T) {
 		"<meta name=\"description\" content=\"Systems engineer\">\n" +
 		"<link rel=\"icon\" href=\"favicon.png\">\n" +
 		"<link rel=\"stylesheet\" href=\"styles.css\">\n" +
-		// fonts block first among the injected tags, in plan order
+		// og/twitter basics first among the injected tags (site-derived):
+		// picture set and site.url unset → relative og:image, large card.
+		"<meta property=\"og:title\" content=\"Parth &amp; Co\">\n" +
+		"<meta property=\"og:type\" content=\"website\">\n" +
+		"<meta property=\"og:description\" content=\"Systems engineer\">\n" +
+		"<meta property=\"og:image\" content=\"me.jpg\">\n" +
+		"<meta property=\"twitter:card\" content=\"summary_large_image\">\n" +
+		// fonts block, in plan order
 		"<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n" +
 		"<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n" +
 		"<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=JetBrains&#43;Mono&amp;display=swap\">\n" +
@@ -303,5 +310,126 @@ links:
 	}
 	if !strings.HasPrefix(lines[len(lines)-1], "total ") {
 		t.Errorf("last manifest line = %q, want a total line", lines[len(lines)-1])
+	}
+}
+
+// TestColorModeRendering pins the site.color_mode emission: the <html> theme
+// attribute and — for auto — the SSG-generated inline script as the FIRST
+// element inside <head>, ahead of the charset meta (no dark flash). The
+// script is a build-time constant, not user config.
+func TestColorModeRendering(t *testing.T) {
+	render := func(t *testing.T, cfg *config.Config) string {
+		t.Helper()
+		var buf bytes.Buffer
+		in := &Input{Config: cfg, HasStyles: true, HeadTags: headTags(cfg), NavLinks: navLinks(cfg)}
+		if cfg.Site.ColorMode == "auto" {
+			el := colorModeScriptEl()
+			in.ColorScript = &el
+		}
+		if err := RenderIndex(&buf, in); err != nil {
+			t.Fatalf("render: %v", err)
+		}
+		return buf.String()
+	}
+
+	t.Run("light: plain <html>, no script", func(t *testing.T) {
+		out := render(t, &config.Config{Site: config.Site{Title: "T", Picture: "me.jpg"}})
+		if strings.Contains(out, `data-bs-theme`) || strings.Contains(out, "<script>") {
+			t.Errorf("light mode leaked theme attr/script:\n%s", out)
+		}
+		if !strings.HasPrefix(out, "<!doctype html>\n<html lang=\"en\">") {
+			t.Errorf("light <html> tag wrong:\n%s", out)
+		}
+	})
+
+	t.Run("dark: data-bs-theme=dark, no script", func(t *testing.T) {
+		cfg := &config.Config{Site: config.Site{Title: "T", Picture: "me.jpg", ColorMode: "dark"}}
+		out := render(t, cfg)
+		if !strings.HasPrefix(out, "<!doctype html>\n<html lang=\"en\" data-bs-theme=\"dark\">") {
+			t.Errorf("dark <html> tag wrong:\n%s", out)
+		}
+		if strings.Contains(out, "<script>") {
+			t.Errorf("dark mode emitted the auto script:\n%s", out)
+		}
+	})
+
+	t.Run("auto: data-bs-theme=light + script first in head, before charset", func(t *testing.T) {
+		cfg := &config.Config{Site: config.Site{Title: "T", Picture: "me.jpg", ColorMode: "auto"}}
+		out := render(t, cfg)
+		if !strings.HasPrefix(out, "<!doctype html>\n<html lang=\"en\" data-bs-theme=\"light\">") {
+			t.Errorf("auto <html> tag wrong:\n%s", out)
+		}
+		script := "<script>\n  const dark = window.matchMedia(\"(prefers-color-scheme: dark)\");\n" +
+			"  document.documentElement.dataset.bsTheme = dark.matches ? \"dark\" : \"light\";\n</script>"
+		if !strings.Contains(out, script) {
+			t.Errorf("auto script body =\nwant:\n%s\ngot:\n%s", script, out)
+		}
+		// Placement: <head>\n<script>…</script> comes before <meta charset>.
+		i := strings.Index(out, script)
+		if i < 0 {
+			t.Fatal("script missing")
+		}
+		if !strings.HasPrefix(out[i:], script) ||
+			!strings.Contains(out[:i], "<head>") ||
+			strings.Contains(out[:i], `<meta charset`) {
+			t.Errorf("script not before charset;\n%s", out)
+		}
+	})
+}
+
+// TestHumanSize pins the binary-unit labels: B below 1000, then 1024 steps
+// marked KiB/MiB/GiB with one decimal.
+func TestHumanSize(t *testing.T) {
+	tests := []struct {
+		n    int64
+		want string
+	}{
+		{0, "0 B"},
+		{999, "999 B"},
+		{1024, "1.0 KiB"},
+		{1500, "1.5 KiB"},
+		{29747, "29.0 KiB"},
+		{1024 * 1024, "1.0 MiB"},
+	}
+	for _, tc := range tests {
+		if got := humanSize(tc.n); got != tc.want {
+			t.Errorf("humanSize(%d) = %q, want %q", tc.n, got, tc.want)
+		}
+	}
+}
+
+// TestWriteIndexAutoScript: through writeIndex itself (Build's render step),
+// color_mode auto attaches the generated script element — first in <head> —
+// and light/dark attach none.
+func TestWriteIndexAutoScript(t *testing.T) {
+	write := func(colorMode string) []byte {
+		t.Helper()
+		out := t.TempDir()
+		cfg := &config.Config{Site: config.Site{Title: "T", Picture: "me.jpg", ColorMode: colorMode}}
+		if _, err := writeIndex(out, cfg); err != nil {
+			t.Fatalf("writeIndex(%s): %v", colorMode, err)
+		}
+		html, err := os.ReadFile(filepath.Join(out, "index.html"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return html
+	}
+	cutHead := func(html string) string {
+		_, chunk, ok := strings.Cut(html, "<head>\n")
+		if !ok {
+			t.Fatalf("<head> missing:\n%s", html)
+		}
+		return chunk
+	}
+	auto, light, dark := write("auto"), write("light"), write("dark")
+	if !strings.HasPrefix(cutHead(string(auto)), "<script>") {
+		t.Errorf("auto mode: script not first in <head>:\n%s", auto)
+	}
+	if i, attrIdx := strings.Index(cutHead(string(light)), "<script>"), strings.Index(string(light), "data-bs-theme"); i >= 0 || attrIdx >= 0 {
+		t.Errorf("light mode: unexpected script/theme attr:\n%s", light)
+	}
+	if !strings.Contains(string(dark), `<html lang="en" data-bs-theme="dark">`) || strings.Contains(cutHead(string(dark)), "<script>") {
+		t.Errorf("dark mode html tag/script wrong:\n%s", dark)
 	}
 }
