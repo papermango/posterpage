@@ -12,6 +12,7 @@ site:
     and a fair amount of tooling for both.
   picture: me.jpg
   favicon: favicon.png
+  link_style: button # optional; button | link; default button
 
 head: # all optional; validated against allowlists
   meta: # extra <meta> tags
@@ -32,11 +33,12 @@ fonts: # Google Fonts shortcut; generates preconnect + stylesheet tags
       weights: [400, 600] # optional; omit for the family's default/variable range
     - family: JetBrains Mono
 
-links: # the link list, rendered in order (required)
+links: # the link list, rendered in order (required); button | link per entry
   - text: GitHub
     href: https://github.com/parthdeshmukh
   - text: Blog
     href: /blog
     subtitle: Occasional writing
+    style: link # per-link override of site.link_style
   - text: Email me
     href: mailto:hi@parthdeshmukh.com

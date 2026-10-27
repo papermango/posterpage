@@ -34,6 +34,7 @@ type Site struct {
 	Bio         string `yaml:"bio,omitempty" json:"bio,omitempty"`
 	Picture     string `yaml:"picture" json:"picture"`
 	Favicon     string `yaml:"favicon,omitempty" json:"favicon,omitempty"`
+	LinkStyle   string `yaml:"link_style,omitempty" json:"link_style,omitempty"`
 }
 
 type Head struct {
@@ -93,6 +94,10 @@ type Link struct {
 	Text     string `yaml:"text" json:"text"`
 	Href     string `yaml:"href" json:"href"`
 	Subtitle string `yaml:"subtitle,omitempty" json:"subtitle,omitempty"`
+	// Style overrides site.link_style for this entry; empty means "inherit
+	// the site default" (per-link, unlike link_style itself, is never
+	// defaulted).
+	Style string `yaml:"style,omitempty" json:"style,omitempty"`
 }
 
 var (

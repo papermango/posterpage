@@ -45,6 +45,7 @@ func validYAML() string {
     Systems engineer. I build things.
   picture: me.jpg
   favicon: favicon.png
+  link_style: button
 head:
   meta:
     - name: author
@@ -68,6 +69,7 @@ links:
   - text: Blog
     href: /blog
     subtitle: Occasional writing
+    style: link
   - text: Email me
     href: mailto:hi@example.com
 `
@@ -121,6 +123,9 @@ func TestLoadAndValidate(t *testing.T) {
 				}
 				if len(c.Links) != 3 {
 					t.Errorf("links length = %d, want 3", len(c.Links))
+				}
+				if c.Links[1].Style != "link" {
+					t.Errorf("links[1].style = %q, want %q", c.Links[1].Style, "link")
 				}
 				if len(c.Head.Scripts) != 1 || c.Head.Scripts[0].Data["data-domain"] != "parthdeshmukh.com" {
 					t.Errorf("script data attrs not decoded: %+v", c.Head.Scripts)
@@ -266,6 +271,72 @@ links:
     href: https://example.com/x
 `}),
 			wantErr: "font weight 350 must be between 100 and 900 in steps of 100",
+		},
+		{
+			name: "invalid site.link_style",
+			files: base(map[string]string{"site.yml": `site:
+  title: T
+  picture: me.jpg
+  link_style: pill
+links:
+  - text: GitHub
+    href: https://example.com/x
+`}),
+			wantErr: `site.link_style: invalid link style "pill" (allowed: button, link)`,
+		},
+		{
+			name: "invalid per-entry style",
+			files: base(map[string]string{"site.yml": `site:
+  title: T
+  picture: me.jpg
+links:
+  - text: GitHub
+    href: https://example.com/x
+  - text: Blog
+    href: /blog
+    style: banner
+`}),
+			wantErr: `links[1]: invalid style "banner" (allowed: button, link)`,
+		},
+		{
+			name: "link styles absent → defaults applied",
+			files: base(map[string]string{"site.yml": `site:
+  title: T
+  picture: me.jpg
+links:
+  - text: GitHub
+    href: https://example.com/x
+`}),
+			check: func(t *testing.T, c *Config) {
+				if c.Site.LinkStyle != "button" {
+					t.Errorf("site.link_style = %q, want defaulted %q", c.Site.LinkStyle, "button")
+				}
+				if c.Links[0].Style != "" {
+					t.Errorf("links[0].style = %q, want %q (inherit)", c.Links[0].Style, "")
+				}
+			},
+		},
+		{
+			name: "per-link override accepted",
+			files: base(map[string]string{"site.yml": `site:
+  title: T
+  picture: me.jpg
+  link_style: link
+links:
+  - text: GitHub
+    href: https://example.com/x
+    style: button
+  - text: Blog
+    href: /blog
+    subtitle: Occasional writing
+    style: link
+`}),
+			check: func(t *testing.T, c *Config) {
+				if c.Site.LinkStyle != "link" || c.Links[0].Style != "button" || c.Links[1].Style != "link" {
+					t.Errorf("link styles not decoded: site %q, links %q/%q",
+						c.Site.LinkStyle, c.Links[0].Style, c.Links[1].Style)
+				}
+			},
 		},
 		{
 			name: "http href rejected",

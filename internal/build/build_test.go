@@ -13,12 +13,15 @@ import (
 
 // Golden-file test: a fixed config (incl. head entries + fonts) must render
 // byte-identical HTML (docs/BUILD_PLAN.md, internal/build testing). HasStyles
-// is true, as Build sets it after the styles step, and HeadTags is the
-// headTags(cfg) output, as writeIndex builds it. The golden asserts the full
-// emission order: basics → fonts (preconnects + css2 URL) → head entries.
+// is true, as Build sets it, HeadTags is the headTags(cfg) output and NavLinks
+// the navLinks(cfg) output, as writeIndex builds them. The golden asserts the
+// full emission order: basics → fonts (preconnects + css2 URL) → head entries.
 // URL/attribute escaping here is html/template's own (a plain string in a
 // quoted-attr-URL context): & → &amp;, + → &#43;, " → &#34;.
 func TestRenderIndexGolden(t *testing.T) {
+	// Config shape = example/site.yml: link_style: button global default,
+	// a mixed nav (buttons plus one style: link entry, itself with a
+	// subtitle rendering as <small>).
 	cfg := &config.Config{
 		Site: config.Site{
 			Title:       "Parth & Co",
@@ -26,6 +29,7 @@ func TestRenderIndexGolden(t *testing.T) {
 			Bio:         "Systems engineer. I build things.",
 			Picture:     "me.jpg",
 			Favicon:     "favicon.png",
+			LinkStyle:   "button",
 		},
 		Head: config.Head{
 			Meta: []config.MetaTag{
@@ -51,12 +55,13 @@ func TestRenderIndexGolden(t *testing.T) {
 		},
 		Links: []config.Link{
 			{Text: "GitHub", Href: "https://github.com/pdeshmukh"},
-			{Text: "Blog", Href: "/blog", Subtitle: "Occasional writing"},
+			{Text: "Blog", Href: "/blog", Subtitle: "Occasional writing", Style: "link"},
+			{Text: "Email me", Href: "mailto:hi@parthdeshmukh.com"},
 		},
 	}
 
 	var got bytes.Buffer
-	if err := RenderIndex(&got, &Input{Config: cfg, HasStyles: true, HeadTags: headTags(cfg)}); err != nil {
+	if err := RenderIndex(&got, &Input{Config: cfg, HasStyles: true, HeadTags: headTags(cfg), NavLinks: navLinks(cfg)}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 
@@ -87,7 +92,8 @@ func TestRenderIndexGolden(t *testing.T) {
 		"\t<p class=\"text-body-secondary\">Systems engineer. I build things.</p>\n" +
 		"\t<nav class=\"d-grid gap-2 my-4\">\n" +
 		"\t\t<a class=\"btn btn-outline-secondary\" href=\"https://github.com/pdeshmukh\">GitHub</a>\n" +
-		"\t\t<a class=\"btn btn-outline-secondary\" href=\"/blog\">Blog <small class=\"d-block\">Occasional writing</small></a>\n" +
+		"\t\t<a class=\"link-secondary link-underline link-underline-opacity-0\" href=\"/blog\">Blog <small class=\"d-block\">Occasional writing</small></a>\n" +
+		"\t\t<a class=\"btn btn-outline-secondary\" href=\"mailto:hi@parthdeshmukh.com\">Email me</a>\n" +
 		"\t</nav>\n" +
 		"</main>\n" +
 		"</body>\n" +
@@ -95,6 +101,43 @@ func TestRenderIndexGolden(t *testing.T) {
 
 	if got.String() != want {
 		t.Errorf("rendered HTML mismatch\n--- got ---\n%s\n--- want ---\n%s", got.String(), want)
+	}
+}
+
+// TestNavLinks pins the render-style resolution: entry style wins over
+// site.link_style, absent entries inherit it, and an empty global (configs
+// built without Load's defaulting) still renders as the default button.
+func TestNavLinks(t *testing.T) {
+	tests := []struct {
+		name        string
+		globalStyle string
+		entryStyle  string
+		wantButton  bool
+	}{
+		{"empty global, empty entry", "", "", true},
+		{"global link, empty entry", "link", "", false},
+		{"global button, entry link", "button", "link", false},
+		{"global link, entry button", "link", "button", true},
+		{"global link, entry link", "link", "link", false},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := &config.Config{
+				Site:  config.Site{LinkStyle: tc.globalStyle},
+				Links: []config.Link{{Text: "Blog", Href: "/blog", Style: tc.entryStyle}},
+			}
+			got := navLinks(cfg)
+			if len(got) != 1 {
+				t.Fatalf("navLinks length = %d, want 1", len(got))
+			}
+			if got[0].IsButton != tc.wantButton {
+				t.Errorf("navLinks[0].IsButton = %v, want %v", got[0].IsButton, tc.wantButton)
+			}
+			want := NavLink{Text: "Blog", Href: "/blog", IsButton: tc.wantButton}
+			if got[0] != want {
+				t.Errorf("navLinks[0] = %+v, want %+v", got[0], want)
+			}
+		})
 	}
 }
 

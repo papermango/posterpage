@@ -7,8 +7,10 @@
 //
 // The page template uses only a handful of Bootstrap classes (container, btn
 // btn-outline-secondary, rounded-circle, h3, text-body-secondary, bg-body,
-// d-grid, gap-2, my-4, d-block). The imports and overrides below generate
-// exactly those; extending the markup means extending this file.
+// d-grid, gap-2, my-4, d-block, and — for style: link nav entries —
+// link-secondary link-underline link-underline-opacity-0). The imports and
+// overrides below generate exactly those; extending the markup means
+// extending this file.
 
 @use "sass:map";
 
@@ -25,9 +27,30 @@ $theme-colors: ("secondary": map.get($theme-colors, "secondary"));
 // Utilities: before generating CSS with utilities/api, replace the full
 // utility map with the keys the page uses: display (d-grid, d-block),
 // vertical margin (my-4), gap (gap-2), text color (text-body-secondary),
-// background color (bg-body) and border radius (rounded-circle).
-$keep: ("background-color", "display", "gap", "margin-y", "rounded", "text-color");
+// background color (bg-body), border radius (rounded-circle), and the link
+// underline control of style: link anchors (link-underline,
+// link-underline-opacity-0). Importing "utilities" defines $utilities;
+// narrow the two link utilities to the values the markup uses before the
+// kept map is built: link-underline only needs its catch-all (link-color)
+// value — not the per-color variants, whose root vars we don't emit — and
+// link-underline-opacity only needs 0 (rest) and 100 (hover reveal).
+$keep: ("background-color", "display", "gap", "margin-y", "rounded", "text-color",
+  "link-underline", "link-underline-opacity");
 @import "utilities";
+$utilities: map.merge($utilities, (
+  "link-underline": (
+    property: text-decoration-color,
+    class: link-underline,
+    local-vars: ("link-underline-opacity": 1),
+    values: (null: rgba(var(--#{$prefix}link-color-rgb), var(--#{$prefix}link-underline-opacity, 1))),
+  ),
+  "link-underline-opacity": (
+    css-var: true,
+    class: link-underline-opacity,
+    state: hover,
+    values: (0: 0, 100: 1),
+  ),
+));
 $kept: ();
 @each $u in $keep {
   $kept: map.merge($kept, ($u: map.get($utilities, $u)));
@@ -39,6 +62,9 @@ $utilities: $kept;
 @import "type"; // .h1–.h6 heading classes (h3 in the page markup)
 @import "buttons";
 @import "containers";
+// link-secondary for the style: link anchors; only secondary survives the
+// theme-colors trim above, so only .link-secondary is emitted.
+@import "helpers/colored-links";
 @import "utilities/api";
 
 // + user overrides below

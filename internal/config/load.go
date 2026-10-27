@@ -69,10 +69,14 @@ func Load(dir string) (*Config, string, error) {
 	return &c, name, nil
 }
 
-// applyDefaults resolves the documented defaults on the loaded config.
-// The only default for now: fonts.display → swap.
+// applyDefaults resolves the documented defaults on the loaded config: the
+// font-display and the global link render style. Per-entry links[].style is
+// an override and stays empty when absent.
 func applyDefaults(c *Config) {
 	if c.Fonts != nil && c.Fonts.Display == "" {
 		c.Fonts.Display = "swap"
+	}
+	if c.Site.LinkStyle == "" {
+		c.Site.LinkStyle = "button"
 	}
 }

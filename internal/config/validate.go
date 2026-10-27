@@ -71,6 +71,15 @@ func validate(c *Config, dir string) []problem {
 	if c.Site.Favicon != "" {
 		addFileChecks(&ps, c.Site.Favicon, c.Site.Line, "site.favicon", "favicon file", dir)
 	}
+	// Link render style. Load defaults site.link_style to button, so the
+	// not-set case is unreachable via Load; per-entry links[].style stays
+	// empty when absent (inherit) and is only checked when set.
+	switch {
+	case c.Site.LinkStyle == "":
+		add(c.Site.Line, "site.link_style", "link_style is not set (should default to button)") // unreachable via Load
+	case !linkStyles[c.Site.LinkStyle]:
+		add(c.Site.Line, "site.link_style", `invalid link style %q (allowed: button, link)`, c.Site.LinkStyle)
+	}
 
 	// head.meta
 	for i := range c.Head.Meta {
@@ -172,6 +181,9 @@ func validate(c *Config, dir string) []problem {
 		} else {
 			addHrefCheck(add, l.Line, path, l.Href, true) // mailto: allowed in nav links
 		}
+		if l.Style != "" && !linkStyles[l.Style] {
+			add(l.Line, path, `invalid style %q (allowed: button, link)`, l.Style)
+		}
 	}
 
 	// styles: exactly one of styles.scss / styles.css
@@ -190,6 +202,11 @@ func validate(c *Config, dir string) []problem {
 var relAllowed = map[string]bool{
 	"stylesheet": true, "preconnect": true, "dns-prefetch": true,
 	"preload": true, "icon": true, "alternate": true,
+}
+
+// linkStyles is the value domain of site.link_style and links[].style.
+var linkStyles = map[string]bool{
+	"button": true, "link": true,
 }
 
 // addHrefCheck validates one href/src reference: absolute https:// (also
