@@ -1,7 +1,7 @@
 // Package build implements the posterpage build pipeline: load + validate the
-// config (milestone 1), render the page and copy assets (milestone 2). The
-// styles step (sass / css passthrough) lands in milestone 3, head-tag
-// injection in milestone 4 — see docs/BUILD_PLAN.md.
+// config (milestone 1), resolve styles / render the page / copy assets
+// (milestones 2–3). Head-tag injection lands in milestone 4 — see
+// docs/BUILD_PLAN.md.
 package build
 
 import (
@@ -16,8 +16,9 @@ import (
 )
 
 // Input is the render input: the resolved config plus build-stage flags.
-// HasStyles is set once the styles step (milestone 3) has produced
-// styles.css, which turns on the stylesheet link in <head>.
+// HasStyles is set once the styles step has produced styles.css — always, in
+// practice, since config validation guarantees a styles source — which turns
+// on the stylesheet link in <head>.
 type Input struct {
 	*config.Config
 	HasStyles bool
@@ -31,11 +32,12 @@ func RenderIndex(w io.Writer, in *Input) error {
 	return indexTmpl.Execute(w, in)
 }
 
-// writeIndex renders the page (Input has HasStyles=false until milestone 3)
-// into <outDir>/index.html and returns its byte size.
+// writeIndex renders the page into <outDir>/index.html and returns its byte
+// size. HasStyles is always true here: the styles step has already run (and
+// produced <outDir>/styles.css) by the time render happens.
 func writeIndex(outDir string, cfg *config.Config) (int64, error) {
 	var buf bytes.Buffer
-	if err := RenderIndex(&buf, &Input{Config: cfg}); err != nil {
+	if err := RenderIndex(&buf, &Input{Config: cfg, HasStyles: true}); err != nil {
 		return 0, err
 	}
 	path := filepath.Join(outDir, "index.html")

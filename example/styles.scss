@@ -1,15 +1,42 @@
 // example/styles.scss — controls shipped size; importing Bootstrap partials
-// is the tree-shake. Compiled (milestone 3) via:
+// is the tree-shake. Compiled via posterpage build, which runs the equivalent
+// of:
 //
 //	sass --style=compressed --no-source-map \
-//	  --load-path=<repo>/assets/bootstrap styles.scss public/styles.css
+//	  --load-path=<vendored bootstrap scss> styles.scss public/styles.css
+//
+// The page template uses only a handful of Bootstrap classes (container, btn
+// btn-outline-secondary, rounded-circle, h3, text-body-secondary, bg-body,
+// d-grid, gap-2, my-4, d-block). The imports and overrides below generate
+// exactly those; extending the markup means extending this file.
+
+@use "sass:map";
 
 @import "functions";
 @import "variables";
 @import "maps";
 @import "mixins";
+
+// Buttons: keep only the secondary variant (the links use
+// btn-outline-secondary; the loop still emits .btn-secondary as a side
+// effect). Trimmed after @import "maps", which finalizes $theme-colors.
+$theme-colors: ("secondary": map.get($theme-colors, "secondary"));
+
+// Utilities: before generating CSS with utilities/api, replace the full
+// utility map with the keys the page uses: display (d-grid, d-block),
+// vertical margin (my-4), gap (gap-2), text color (text-body-secondary),
+// background color (bg-body) and border radius (rounded-circle).
+$keep: ("background-color", "display", "gap", "margin-y", "rounded", "text-color");
+@import "utilities";
+$kept: ();
+@each $u in $keep {
+  $kept: map.merge($kept, ($u: map.get($utilities, $u)));
+}
+$utilities: $kept;
+
 @import "root";
 @import "reboot";
+@import "type"; // .h1–.h6 heading classes (h3 in the page markup)
 @import "buttons";
 @import "containers";
 @import "utilities/api";

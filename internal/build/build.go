@@ -19,12 +19,13 @@ type File struct {
 // the output into outDir (created if needed; previous output is overwritten):
 //
 //  1. load + validate the config,
-//  2. execute the page template → index.html,
-//  3. copy site.picture / site.favicon verbatim,
-//  4. return the manifest (one File per emitted file).
-//
-// There is no styles step yet — milestone 3 adds sass compilation / css
-// passthrough before the template render, wiring the Input.HasStyles flag.
+//  2. resolve styles: compile styles.scss via sass or copy styles.css
+//     → styles.css (before the render, so a sass failure aborts before
+//     index.html is written),
+//  3. execute the page template → index.html,
+//  4. copy site.picture / site.favicon verbatim,
+//  5. return the manifest (one File per emitted file), in the stable order
+//     index.html, styles.css, then picture/favicon.
 func Build(cfgDir, outDir string) ([]File, error) {
 	cfg, name, err := config.Load(cfgDir)
 	if err != nil {
@@ -38,12 +39,18 @@ func Build(cfgDir, outDir string) ([]File, error) {
 		return nil, fmt.Errorf("%s: %w", outDir, err)
 	}
 
-	var files []File
+	styleFile, err := buildStyles(cfgDir, outDir)
+	if err != nil {
+		return nil, err
+	}
+
 	size, err := writeIndex(outDir, cfg)
 	if err != nil {
 		return nil, err
 	}
-	files = append(files, File{Name: "index.html", Size: size})
+
+	var files []File
+	files = append(files, File{Name: "index.html", Size: size}, styleFile)
 
 	assetFiles, err := copyAssets(cfgDir, outDir, cfg)
 	if err != nil {

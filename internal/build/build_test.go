@@ -12,8 +12,8 @@ import (
 )
 
 // Golden-file test: a fixed minimal config must render byte-identical HTML
-// (docs/BUILD_PLAN.md, internal/build testing). The stylesheet link is not in
-// the expected output — it comes online in milestone 3 via Input.HasStyles.
+// (docs/BUILD_PLAN.md, internal/build testing). HasStyles is true, as Build
+// sets it after the styles step.
 func TestRenderIndexGolden(t *testing.T) {
 	cfg := &config.Config{
 		Site: config.Site{
@@ -30,7 +30,7 @@ func TestRenderIndexGolden(t *testing.T) {
 	}
 
 	var got bytes.Buffer
-	if err := RenderIndex(&got, &Input{Config: cfg}); err != nil {
+	if err := RenderIndex(&got, &Input{Config: cfg, HasStyles: true}); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 
@@ -44,6 +44,7 @@ func TestRenderIndexGolden(t *testing.T) {
 		"<title>Parth &amp; Co</title>\n" +
 		"<meta name=\"description\" content=\"Systems engineer\">\n" +
 		"<link rel=\"icon\" href=\"favicon.png\">\n" +
+		"<link rel=\"stylesheet\" href=\"styles.css\">\n" +
 		"</head>\n" +
 		"<body class=\"bg-body\">\n" +
 		"<main class=\"container\" style=\"max-width: 40rem\">\n" +
@@ -127,7 +128,9 @@ func TestCopyAssets(t *testing.T) {
 
 // Pipeline-level test through the same entry point cmd uses (build.Build +
 // build.PrintManifest): an example-like fixture must produce exactly
-// index.html + the copied assets, with the manifest matching the file count.
+// index.html + styles.css + the copied assets, with the manifest matching the
+// file count. The .css style source doubles as the passthrough path test; the
+// styles.scss compile path is covered in styles_test.go.
 func TestBuildPipeline(t *testing.T) {
 	dir := t.TempDir()
 	out := t.TempDir()
@@ -151,7 +154,7 @@ links:
     href: /blog
     subtitle: Occasional writing
 `)
-	write("styles.css", "/* present so config.Validate passes; milestone 3 handles it */\n")
+	write("styles.css", "/* present so config.Validate passes */\n")
 	write("me.jpg", "picture bytes")
 	write("favicon.png", "favicon bytes")
 
@@ -160,8 +163,8 @@ links:
 		t.Fatalf("Build: %v", err)
 	}
 
-	// Out dir contains exactly index.html + the two copied assets; styles.css
-	// is NOT output yet (milestone 3).
+	// Out dir contains exactly index.html + styles.css + the two copied
+	// assets (styles.css is byte-passthrough of the source).
 	entries, err := os.ReadDir(out)
 	if err != nil {
 		t.Fatal(err)
@@ -171,15 +174,30 @@ links:
 		names = append(names, e.Name())
 	}
 	sort.Strings(names)
-	if got, want := strings.Join(names, ","), "favicon.png,index.html,me.jpg"; got != want {
+	if got, want := strings.Join(names, ","), "favicon.png,index.html,me.jpg,styles.css"; got != want {
 		t.Errorf("out dir = %q, want %q", got, want)
 	}
 
-	if len(files) != 3 {
-		t.Fatalf("manifest has %d files, want 3: %+v", len(files), files)
+	if len(files) != 4 {
+		t.Fatalf("manifest has %d files, want 4: %+v", len(files), files)
 	}
-	if files[0].Name != "index.html" || files[0].Size == 0 {
-		t.Errorf("manifest[0] = %+v, want non-empty index.html", files[0])
+	// Stable manifest order: index.html, styles.css, then picture/favicon.
+	wantOrder := []string{"index.html", "styles.css", "me.jpg", "favicon.png"}
+	for i, name := range wantOrder {
+		if files[i].Name != name || files[i].Size == 0 {
+			t.Errorf("manifest[%d] = %+v, want non-empty %s", i, files[i], name)
+		}
+	}
+	srcCss, err := os.ReadFile(filepath.Join(dir, "styles.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	outCss, err := os.ReadFile(filepath.Join(out, "styles.css"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(srcCss, outCss) {
+		t.Error("styles.css passthrough bytes differ from source")
 	}
 
 	html, err := os.ReadFile(filepath.Join(out, "index.html"))
@@ -188,6 +206,7 @@ links:
 	}
 	for _, want := range []string{
 		"<!doctype html>", `<title>Test Site</title>`,
+		`<link rel="stylesheet" href="styles.css">`,
 		`<a class="btn btn-outline-secondary" href="https://github.com/pdeshmukh">GitHub</a>`,
 	} {
 		if !bytes.Contains(html, []byte(want)) {
@@ -200,8 +219,8 @@ links:
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSuffix(manifest.String(), "\n"), "\n")
-	if len(lines) != 4 {
-		t.Fatalf("manifest has %d lines, want 4: %q", len(lines), manifest.String())
+	if len(lines) != 5 {
+		t.Fatalf("manifest has %d lines, want 5: %q", len(lines), manifest.String())
 	}
 	if !strings.HasPrefix(lines[len(lines)-1], "total ") {
 		t.Errorf("last manifest line = %q, want a total line", lines[len(lines)-1])
