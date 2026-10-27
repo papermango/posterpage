@@ -1,0 +1,5 @@
+# OpenCode session state
+.opencode/
+
+# Default build output dir
+/public/
