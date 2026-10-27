@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.Site.Title}}</title>
+{{- if .Site.Description}}
+<meta name="description" content="{{.Site.Description}}">{{end}}
+{{- if .Site.Favicon}}
+<link rel="icon" href="{{.Site.Favicon}}">{{end}}
+{{- if .HasStyles}}
+<link rel="stylesheet" href="styles.css">{{end}}
+</head>
+<body class="bg-body">
+<main class="container" style="max-width: 40rem">
+	<img class="rounded-circle mt-5" src="{{.Site.Picture}}" width="120" height="120" alt="{{.Site.Title}}">
+	<h1 class="h3 mt-3">{{.Site.Title}}</h1>
+	<p class="text-body-secondary">{{.Site.Bio}}</p>
+	<nav class="d-grid gap-2 my-4">
+{{range .Links}}		<a class="btn btn-outline-secondary" href="{{.Href}}">{{.Text}}{{if .Subtitle}} <small class="d-block">{{.Subtitle}}</small>{{end}}</a>
+{{end}}	</nav>
+</main>
+</body>
+</html>

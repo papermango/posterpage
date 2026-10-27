@@ -9,15 +9,16 @@ import (
 	"io"
 	"os"
 
-	"posterpage/internal/config"
+	"posterpage/internal/build"
 )
 
 const usage = `usage:
   posterpage build [-c <config-dir>] [-o <out-dir>]    build the site; defaults: ./site → ./public
   posterpage serve [-o <out-dir>] [-addr <addr>]       serve the built site (not implemented yet)
 
-For this milestone, build loads and validates the config and prints it as
-JSON; no output files are written yet.`
+build loads and validates the config, renders the page and copies its assets
+into the out dir, and prints a manifest of the emitted files (styles are not
+processed yet — milestone 3).`
 
 func main() {
 	os.Exit(run(os.Args[1:]))
@@ -50,8 +51,7 @@ func cmdBuild(argv []string) int {
 	fs.SetOutput(io.Discard)
 	fs.Usage = func() {}
 	cfgDir := fs.String("c", "./site", "config directory (containing site.yml/.yaml/.json)")
-	outDir := fs.String("o", "./public", "output directory (unused until the page-render milestone)")
-	_ = *outDir // accepted now; used by page rendering in a later milestone
+	outDir := fs.String("o", "./public", "output directory (created if needed, overwritten on rebuild)")
 	if err := fs.Parse(argv); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			fmt.Println(usage)
@@ -61,17 +61,13 @@ func cmdBuild(argv []string) int {
 		return 1
 	}
 
-	cfg, name, err := config.Load(*cfgDir)
+	files, err := build.Build(*cfgDir, *outDir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "posterpage: %v\n", err)
 		return 1
 	}
-	if err := config.Validate(cfg, *cfgDir, name); err != nil {
-		fmt.Fprintf(os.Stderr, "posterpage: %v\n", err)
-		return 1
-	}
-	if err := config.PrintJSON(os.Stdout, cfg); err != nil {
-		fmt.Fprintf(os.Stderr, "posterpage: printing config: %v\n", err)
+	if err := build.PrintManifest(os.Stdout, files); err != nil {
+		fmt.Fprintf(os.Stderr, "posterpage: printing manifest: %v\n", err)
 		return 1
 	}
 	return 0
