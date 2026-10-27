@@ -141,9 +141,11 @@ Body skeleton (Bootstrap classes only, no custom layout CSS):
 ```html
 <body class="bg-body">
   <main class="container" style="max-width: 40rem">
-    <img class="rounded-circle mt-5" src="…" width="120" height="120" alt="Parth Deshmukh">
-    <h1 class="h3 mt-3">…</h1>
-    <p class="text-body-secondary">…bio…</p>
+    <header class="text-center">
+      <img class="rounded-circle mt-5" src="…" width="120" height="120" alt="Parth Deshmukh">
+      <h1 class="h3 mt-3">…</h1>
+      <p class="text-body-secondary">…bio…</p>
+    </header>
     <nav class="d-grid gap-2 my-4">
       <a class="btn btn-outline-secondary" href="…">GitHub</a>  <!-- per style: button mode, or a plain <a> for link mode; subtitle → <small> -->
     </nav>

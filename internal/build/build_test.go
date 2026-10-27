@@ -87,9 +87,11 @@ func TestRenderIndexGolden(t *testing.T) {
 		"</head>\n" +
 		"<body class=\"bg-body\">\n" +
 		"<main class=\"container\" style=\"max-width: 40rem\">\n" +
-		"\t<img class=\"rounded-circle mt-5\" src=\"me.jpg\" width=\"120\" height=\"120\" alt=\"Parth &amp; Co\">\n" +
-		"\t<h1 class=\"h3 mt-3\">Parth &amp; Co</h1>\n" +
-		"\t<p class=\"text-body-secondary\">Systems engineer. I build things.</p>\n" +
+		"\t<header class=\"text-center\">\n" +
+		"\t\t<img class=\"rounded-circle mt-5\" src=\"me.jpg\" width=\"120\" height=\"120\" alt=\"Parth &amp; Co\">\n" +
+		"\t\t<h1 class=\"h3 mt-3\">Parth &amp; Co</h1>\n" +
+		"\t\t<p class=\"text-body-secondary\">Systems engineer. I build things.</p>\n" +
+		"\t</header>\n" +
 		"\t<nav class=\"d-grid gap-2 my-4\">\n" +
 		"\t\t<a class=\"btn btn-outline-secondary\" href=\"https://github.com/pdeshmukh\">GitHub</a>\n" +
 		"\t\t<a class=\"link-secondary link-underline link-underline-opacity-0\" href=\"/blog\">Blog <small class=\"d-block\">Occasional writing</small></a>\n" +

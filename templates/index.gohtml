@@ -24,9 +24,11 @@ is emitted. */}}{{define "htag"}}{{if eq .Name "meta"}}<meta{{template "hattr" .
 </head>
 <body class="bg-body">
 <main class="container" style="max-width: 40rem">
-	<img class="rounded-circle mt-5" src="{{.Site.Picture}}" width="120" height="120" alt="{{.Site.Title}}">
-	<h1 class="h3 mt-3">{{.Site.Title}}</h1>
-	<p class="text-body-secondary">{{.Site.Bio}}</p>
+	<header class="text-center">
+		<img class="rounded-circle mt-5" src="{{.Site.Picture}}" width="120" height="120" alt="{{.Site.Title}}">
+		<h1 class="h3 mt-3">{{.Site.Title}}</h1>
+		<p class="text-body-secondary">{{.Site.Bio}}</p>
+	</header>
 	<nav class="d-grid gap-2 my-4">
 {{range .NavLinks}}{{if .IsButton}}		<a class="btn btn-outline-secondary" href="{{.Href}}">{{.Text}}{{if .Subtitle}} <small class="d-block">{{.Subtitle}}</small>{{end}}</a>
 {{else}}		<a class="link-secondary link-underline link-underline-opacity-0" href="{{.Href}}">{{.Text}}{{if .Subtitle}} <small class="d-block">{{.Subtitle}}</small>{{end}}</a>

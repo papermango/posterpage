@@ -27,17 +27,22 @@ $theme-colors: ("secondary": map.get($theme-colors, "secondary"));
 // Utilities: before generating CSS with utilities/api, replace the full
 // utility map with the keys the page uses: display (d-grid, d-block),
 // vertical margin (my-4), gap (gap-2), text color (text-body-secondary),
-// background color (bg-body), border radius (rounded-circle), and the link
-// underline control of style: link anchors (link-underline,
+// background color (bg-body), centering (text-center; narrowed to drop the
+// responsive per-breakpoint variants), border radius (rounded-circle), and
+// the link underline control of style: link anchors (link-underline,
 // link-underline-opacity-0). Importing "utilities" defines $utilities;
-// narrow the two link utilities to the values the markup uses before the
-// kept map is built: link-underline only needs its catch-all (link-color)
-// value — not the per-color variants, whose root vars we don't emit — and
-// link-underline-opacity only needs 0 (rest) and 100 (hover reveal).
+// narrow the redefined utilities to the values the markup uses before the
+// kept map is built.
 $keep: ("background-color", "display", "gap", "margin-y", "rounded", "text-color",
-  "link-underline", "link-underline-opacity");
+  "text-align", "link-underline", "link-underline-opacity");
 @import "utilities";
 $utilities: map.merge($utilities, (
+  // Drop the responsive: true variants; the page uses only center.
+  "text-align": (
+    property: text-align,
+    class: text,
+    values: (center: center),
+  ),
   "link-underline": (
     property: text-decoration-color,
     class: link-underline,
